@@ -2,7 +2,6 @@ using System.Net.Http.Headers;
 using System.Text;
 using System.Text.Json;
 using Ardalis.Result;
-using Core;
 using Microsoft.Extensions.Configuration;
 
 namespace Infrastructure;
@@ -11,91 +10,48 @@ public class HttpClientService(
     IConfiguration configuration, 
     HttpClient httpClient) : IHttpClientService
 {
-    public async Task<Result<TranslationResponse>> TranslateTextAsync(string text, string toLanguageCode,
+    public async Task<Result<string>> FetchTranslationResponseAsync(string text, string toLanguageCode,
         CancellationToken cancellationToken)
     {
         try
         {
             ConfigureHeaders("MicrosoftTranslator:DefaultRequestHeaders");
-            // TODO: Refactor into private methods
-            var json = JsonSerializer.Serialize(new List<Dictionary<string, string>> { new() { { "Text", text } } });
-            var content = new StringContent(json, Encoding.UTF8)
-            {
-                Headers =
-                {
-                    ContentType = new MediaTypeHeaderValue(configuration["MicrosoftTranslator:MediaTypeHeader"]!)
-                }
-            };
-
+            
+            var requestData = new List<Dictionary<string, string>> { new() { { "Text", text } } };
+            var mediaTypeHeader = configuration["MicrosoftTranslator:MediaTypeHeader"]!;
+            var content = CreateRequestBody(requestData, mediaTypeHeader);
+            
             var url = $"{configuration["MicrosoftTranslator:URL"]}&to={toLanguageCode}";
-            var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
-            {
-                Content = content
-            };
+            var response = await SendPostRequestAsync(url, content, cancellationToken);
 
-            var response = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            using var document = JsonDocument.Parse(responseBody);
-            var root = document.RootElement;
-
-            if (root.GetArrayLength() == 0)
-            {
-                return Result<TranslationResponse>.CriticalError("No translations found.");
-            }
-
-            var firstResult = root[0];
-            var detectedLanguageCode = firstResult.GetProperty("detectedLanguage").GetProperty("language").GetString();
-            var translationText = firstResult.GetProperty("translations")[0].GetProperty("text").GetString();
-
-            var translationResponse = new TranslationResponse(detectedLanguageCode, translationText);
-
-            return Result<TranslationResponse>.Success(translationResponse);
+            var responseString = await response.Content.ReadAsStringAsync(cancellationToken);
+            return Result<string>.Success(responseString);
         }
         catch (Exception ex)
         {
-            return Result<TranslationResponse>.CriticalError(ex.Message);
+            return Result.CriticalError(ex.Message);
         }
     }
     
-    public async Task<Result<AnswerResponse>> AnswerQuestionAsync(string question, CancellationToken cancellationToken)
+    public async Task<Result<string>> FetchAnswerResponseAsync(string question, CancellationToken cancellationToken)
     {
         try
         {
             ConfigureHeaders("CognitiveService:DefaultRequestHeaders");
             
-            var questionData = new { question };
-            var json = JsonSerializer.Serialize(questionData);
-            var content = new StringContent(json, Encoding.UTF8)
-            {
-                Headers =
-                {
-                    ContentType = new MediaTypeHeaderValue(configuration["CognitiveService:MediaTypeHeader"]!)
-                }
-            };
-
-            var url = configuration["CognitiveService:URL"];
-            var request = new HttpRequestMessage(HttpMethod.Post, url)
-            {
-                Content = content
-            };
-
-            var response = await httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-            response.EnsureSuccessStatusCode();
-
-            var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            var jsonDoc = JsonDocument.Parse(responseBody);
-            var root = jsonDoc.RootElement;
-            var answers = root.GetProperty("answers");
-            var firstAnswer = answers.EnumerateArray().First();
-            var answerResult = new AnswerResponse(firstAnswer.GetProperty("answer").GetString());
-
-            return Result<AnswerResponse>.Success(answerResult);
+            var requestData = new { question };
+            var mediaTypeHeader = configuration["CognitiveService:MediaTypeHeader"]!;
+            var content = CreateRequestBody(requestData, mediaTypeHeader);
+            
+            var url = configuration["CognitiveService:URL"]!;
+            var response = await SendPostRequestAsync(url, content, cancellationToken);
+            
+            var responseString = await response.Content.ReadAsStringAsync(cancellationToken);
+            return Result<string>.Success(responseString);
         }
         catch (Exception ex)
         {
-            return Result<AnswerResponse>.CriticalError(ex.Message);
+            return Result.CriticalError(ex.Message);
         }
     }
     
@@ -108,5 +64,36 @@ public class HttpClientService(
         {
             httpClient.DefaultRequestHeaders.Add(item.Key, item.Value);
         }
+    }
+
+    private static StringContent CreateRequestBody<T>(T requestData, string mediaTypeHeader)
+    {
+        var json = JsonSerializer.Serialize(requestData);
+        var content = new StringContent(json, Encoding.UTF8)
+        {
+            Headers =
+            {
+                ContentType = new MediaTypeHeaderValue(mediaTypeHeader)
+            }
+        };
+
+        return content;
+    }
+
+    private async Task<HttpResponseMessage> SendPostRequestAsync(string url, HttpContent content, CancellationToken cancellationToken)
+    {
+        var httpRequest = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = content
+        };
+
+        var response = await httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
+        
+        if (response == null)
+        {
+            throw new InvalidOperationException("The HTTP response is null.");
+        }
+
+        return response;
     }
 }

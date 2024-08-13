@@ -1,69 +1,73 @@
 using Application.AnswerQuestion;
 using Application.TranslateText;
 using Ardalis.Result;
-using Core;
 using MediatR;
+using Spectre.Console;
 
 namespace Presentation;
 
-public class PresentationRunner(
-    ISender sender)
+public class PresentationRunner(ISender sender)
 {
     public async Task Run()
     {
-
-        do
-        {
-            Console.Clear();
-            
-            var question = GetUserQuestion();
-            var translationResponse = await Translate(question);
-            var answerResponse = await AnswerQuestion(translationResponse.Translation);
-
-            if (translationResponse.DetectedLanguageCode != "en")
-            {
-                var translatedAnswer = await Translate(answerResponse.Value.Answer,
-                    translationResponse.DetectedLanguageCode);
-                Console.WriteLine(translatedAnswer.Translation);
-            }
-            else
-            {
-                Console.WriteLine(answerResponse.Value.Answer);
-            }
-
-            Console.Write("Do you want to ask another question? [Y/n] ");
-        } while (Console.ReadKey().KeyChar != 'n');
-    }
-
-    private static string GetUserQuestion()
-    {
         while (true)
         {
-            Console.Write("Your question: ");
-            var question = Console.ReadLine();
-            if (!string.IsNullOrEmpty(question))
+            var question = AnsiConsole.Prompt(new TextPrompt<string>("[deepskyblue1]You[/]:"));
+
+            if (question.ToLower() == "quit" || question.ToLower() == "exit")
             {
-                return question;
+                break;
             }
+
+            var answer = await HandleUserQueryAsync(question);
+            AnsiConsole.MarkupLine($"[orange1]Bot[/]: {answer}\n");
         }
     }
 
-    private async Task<TranslationResponse> Translate(string text,
-        string toLanguageCode = "en")
+    private async Task<string> HandleUserQueryAsync(string question)
     {
-        var request = new TranslateTextQuery(text,
-            toLanguageCode);
-        var result = await sender.Send(request);
-        Guard(result);
-        return result.Value;
+        var answer = string.Empty;
+
+        await AnsiConsole.Status()
+            .Spinner(Spinner.Known.Dots)
+            .SpinnerStyle(Style.Parse("springgreen3"))
+            .StartAsync("Loading",
+                async ctx =>
+                {
+                    ctx.Status("Detecting question language");
+                    var (detectedLanguageCode, translatedQuestion) = await Translate(question);
+
+                    ctx.Status("Retrieving answer");
+                    var answerResponse = await AnswerQuestion(translatedQuestion);
+                    answer = answerResponse.Answer;
+
+                    if (detectedLanguageCode != "en")
+                    {
+                        ctx.Status("Translating answer into question language");
+                        var translatedAnswer = await Translate(answer,
+                            detectedLanguageCode);
+
+                        answer = translatedAnswer.Translation;
+                    }
+                });
+
+        return answer;
     }
 
-    private async Task<Result<AnswerResponse>> AnswerQuestion(string question)
+    private async Task<TranslateTextResponse> Translate(string text, string toLanguageCode = "en")
+    {
+        var request = new TranslateTextQuery(text, toLanguageCode);
+        var result = await sender.Send(request);
+        Guard(result);
+        return result;
+    }
+
+    private async Task<AnswerQuestionResponse> AnswerQuestion(string question)
     {
         var command = new AnswerQuestionQuery(question);
         var result = await sender.Send(command);
         Guard(result);
-        return result.Value;
+        return result;
     }
 
     private static void Guard<T>(Result<T> result)
@@ -75,7 +79,7 @@ public class PresentationRunner(
 
         foreach (var error in result.Errors)
         {
-            Console.WriteLine(error);
+            AnsiConsole.WriteLine(error);
         }
 
         Environment.Exit(0);
