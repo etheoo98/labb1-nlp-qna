@@ -8,6 +8,9 @@
 
     <ItemGroup>
       <PackageReference Include="Ardalis.Result" Version="9.1.0" />
+      <PackageReference Include="Azure.AI.Language.QuestionAnswering" Version="1.1.0" />
+      <PackageReference Include="Azure.AI.Translation.Text" Version="1.0.0" />
+      <PackageReference Include="Google.Cloud.Translation.V2" Version="3.4.0" />
       <PackageReference Include="Microsoft.Extensions.Configuration" Version="8.0.0" />
     </ItemGroup>
 

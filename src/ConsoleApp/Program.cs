@@ -1,5 +1,6 @@
 ﻿using Application;
-using Infrastructure;
+using Infrastructure.Interfaces;
+using Infrastructure.Services.Azure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
@@ -9,7 +10,8 @@ var host = Host.CreateDefaultBuilder().ConfigureServices((_, services) =>
 {
     services.AddApplication();
     services.AddTransient<PresentationRunner>();
-    services.AddHttpClient<IHttpClientService, HttpClientService>();
+    services.AddTransient<ITextTranslationService, AzureTranslationService>();
+    services.AddTransient<IQuestionAnsweringService, AzureQuestionAnsweringService>();
 }).ConfigureLogging(logging =>
 {
     logging.ClearProviders();
