@@ -4,6 +4,6 @@ namespace Infrastructure;
 
 public interface IHttpClientService
 { 
-    Task<Result<string>> FetchTranslationResponseAsync(string text, string toLanguageCode, CancellationToken cancellationToken);
-    Task<Result<string>> FetchAnswerResponseAsync(string question, CancellationToken cancellationToken);
+    Task<Result<string>> TranslateTextAsync(string text, string toLanguageCode, CancellationToken cancellationToken);
+    Task<Result<string>> AnswerQuestionAsync(string question, CancellationToken cancellationToken);
 }

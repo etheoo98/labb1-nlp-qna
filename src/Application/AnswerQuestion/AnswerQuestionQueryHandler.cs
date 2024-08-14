@@ -11,7 +11,7 @@ public class AnswerQuestionQueryHandler(
     public async Task<Result<AnswerQuestionResponse>> Handle(AnswerQuestionQuery request,
         CancellationToken cancellationToken)
     {
-        var result = await httpClientService.FetchAnswerResponseAsync(request.Question,
+        var result = await httpClientService.AnswerQuestionAsync(request.Question,
             cancellationToken);
         
         if (!result.IsSuccess)

@@ -11,7 +11,7 @@ public class TranslateTextQueryHandler(
     public async Task<Result<TranslateTextResponse>> Handle(TranslateTextQuery request,
         CancellationToken cancellationToken)
     {
-        var result = await httpClientService.FetchTranslationResponseAsync(request.Text,
+        var result = await httpClientService.TranslateTextAsync(request.Text,
             request.ToLanguageCode,
             cancellationToken);
 

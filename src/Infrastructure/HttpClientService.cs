@@ -10,7 +10,7 @@ public class HttpClientService(
     IConfiguration configuration, 
     HttpClient httpClient) : IHttpClientService
 {
-    public async Task<Result<string>> FetchTranslationResponseAsync(string text, string toLanguageCode,
+    public async Task<Result<string>> TranslateTextAsync(string text, string toLanguageCode,
         CancellationToken cancellationToken)
     {
         try
@@ -33,7 +33,7 @@ public class HttpClientService(
         }
     }
     
-    public async Task<Result<string>> FetchAnswerResponseAsync(string question, CancellationToken cancellationToken)
+    public async Task<Result<string>> AnswerQuestionAsync(string question, CancellationToken cancellationToken)
     {
         try
         {

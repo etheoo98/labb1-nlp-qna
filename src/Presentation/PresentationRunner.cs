@@ -35,16 +35,16 @@ public class PresentationRunner(ISender sender)
                 async ctx =>
                 {
                     ctx.Status("Detecting question language");
-                    var (detectedLanguageCode, translatedQuestion) = await Translate(question);
+                    var (detectedLanguageCode, translatedQuestion) = await SendTranslationRequest(question);
 
                     ctx.Status("Retrieving answer");
-                    var answerResponse = await AnswerQuestion(translatedQuestion);
+                    var answerResponse = await SendAnswerQuestionRequest(translatedQuestion);
                     answer = answerResponse.Answer;
 
                     if (detectedLanguageCode != "en")
                     {
                         ctx.Status("Translating answer into question language");
-                        var translatedAnswer = await Translate(answer,
+                        var translatedAnswer = await SendTranslationRequest(answer,
                             detectedLanguageCode);
 
                         answer = translatedAnswer.Translation;
@@ -54,7 +54,7 @@ public class PresentationRunner(ISender sender)
         return answer;
     }
 
-    private async Task<TranslateTextResponse> Translate(string text, string toLanguageCode = "en")
+    private async Task<TranslateTextResponse> SendTranslationRequest(string text, string toLanguageCode = "en")
     {
         var request = new TranslateTextQuery(text, toLanguageCode);
         var result = await sender.Send(request);
@@ -62,7 +62,7 @@ public class PresentationRunner(ISender sender)
         return result;
     }
 
-    private async Task<AnswerQuestionResponse> AnswerQuestion(string question)
+    private async Task<AnswerQuestionResponse> SendAnswerQuestionRequest(string question)
     {
         var command = new AnswerQuestionQuery(question);
         var result = await sender.Send(command);
