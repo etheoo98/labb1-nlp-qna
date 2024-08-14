@@ -14,6 +14,7 @@
 
     <ItemGroup>
       <PackageReference Include="Ardalis.Result" Version="9.1.0" />
+      <PackageReference Include="MediatR" Version="12.4.0" />
       <PackageReference Include="Spectre.Console" Version="0.49.1" />
     </ItemGroup>
 
